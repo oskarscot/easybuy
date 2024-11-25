@@ -1,0 +1,80 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environment
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Flask and Python-specific logs and temp files
+instance/
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.db-journal
+
+# Flask-specific files
+instance/  # Flask's default instance folder
+config.py  # If this contains sensitive or environment-specific data
+*.env  # Environment variables
+.env.*  # Variants of .env (e.g., .env.production)
+
+# Test coverage files
+.coverage
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Pytest
+.cache/
+.pytest_cache/
+
+# Editor backups
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.orig
+*.save
+*.tgz
+*.gz
+*.zip
+
+# IDE-specific
+.idea/
+.idea/*.iml
+
+# OS generated files
+.DS_Store
+Thumbs.db
