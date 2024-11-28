@@ -1,6 +1,7 @@
 from flask import Flask
+from flask_cors import CORS
+
 from api import auth, listings, users
-from api.users import users_bp
 from extenstions import migrate, db, jwt
 from models import Role, Permission
 from utils import register_error_handlers
@@ -36,6 +37,8 @@ def create_app():
     app.register_blueprint(auth.auth_bp, url_prefix='/api/v1/auth')
     app.register_blueprint(listings.listings_bp, url_prefix='/api/v1/listings')
     app.register_blueprint(users.users_bp, url_prefix='/api/v1/users')
+
+    CORS(app)
 
     with app.app_context():
         db.create_all()

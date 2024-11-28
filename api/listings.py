@@ -1,13 +1,17 @@
 from datetime import datetime
+from decimal import Decimal
+
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from extenstions import db
-from models import Listing
+from models import Listing, User, Purchase
 from utils import validate_request
 
 listings_bp = Blueprint('listings', __name__)
 
 @listings_bp.route('/create', methods=['POST'])
+@jwt_required() # make sure only signed in users can create listings
 def create_listing():
     request_data = request.get_json()
 
@@ -22,13 +26,21 @@ def create_listing():
     description = request_data['description']
     price = request_data['price']
 
-    if not isinstance(price, (int, float)) or price <= 0:
+    try:
+        price = Decimal(price)
+        if price <= 0:
+            raise ValueError("Price must be a positive number.")
+    except (ValueError, TypeError):
         return jsonify({
             "status": "error",
             "message": "Price must be a positive number."
         }), 400
 
+    email = get_jwt_identity()
+    user = User.query.filter_by(email=email).first()
+
     new_listing = Listing(
+        user_id=user.id,
         title=title,
         description=description,
         price=price,
@@ -51,6 +63,7 @@ def create_listing():
         "message": "Listing created successfully.",
         "listing": {
             "id": new_listing.id,
+            "user_id": new_listing.user_id,
             "title": new_listing.title,
             "description": new_listing.description,
             "price": new_listing.price,
@@ -59,7 +72,7 @@ def create_listing():
         }
     }), 201
 
-@listings_bp.route('/listings', methods=['GET'])
+@listings_bp.route('/', methods=['GET'])
 def get_listings():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -77,8 +90,77 @@ def get_listings():
 
     return jsonify(response), 200
 
+@listings_bp.route('/<int:listing_id>', methods=['GET'])
+def get_listing(listing_id):
+    listing = Listing.query.get(listing_id)
+
+    if not listing:
+        return jsonify({
+            "status": "error",
+            "message": f"Listing with ID {listing_id} not found."
+        }), 404
+
+    return jsonify({
+        "status": "success",
+        "listing": listing.to_dict()
+    }), 200
+
+@listings_bp.route('/<int:listing_id>/buy', methods=['POST'])
+@jwt_required()
+def buy_listing(listing_id):
+    current_user_email = get_jwt_identity()
+    buyer = User.query.filter_by(email=current_user_email).first()
+
+    # this should never happen because the token would belong to the buyer
+    if not buyer:
+        return jsonify({
+            "status": "error",
+            "message": "User not found"
+        }), 404
+
+    listing = Listing.query.get(listing_id)
+    if not listing:
+        return jsonify({
+            "status": "error",
+            "message": "Listing not found"
+        }), 404
+
+    if listing.user_id == buyer.id:
+        return jsonify({
+            "status": "error",
+            "message": "You cannot buy your own listing."
+        }), 400
+
+    if listing.status != 'active':
+        return jsonify({
+            "status": "error",
+            "message": "Listing is not available for purchase"
+        }), 400
+
+    if buyer.balance < listing.price:
+        return jsonify({
+            "status": "error",
+            "message": "Insufficient balance"
+        }), 400
+
+    buyer.balance -= listing.price
+    listing.status = 'sold'
+
+    purchase = Purchase(listing_id=listing.id, buyer_id=buyer.id)
+    db.session.add(purchase)
+
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Purchase completed successfully.",
+        "purchase": purchase.to_dict(),
+        "listing": listing.to_dict()
+    }), 200
+
 
 @listings_bp.route('/delete/<int:listing_id>', methods=['DELETE'])
+@jwt_required()
 def delete_listing(listing_id):
     listing = Listing.query.get(listing_id)
 
@@ -87,6 +169,15 @@ def delete_listing(listing_id):
             "status": "error",
             "message": f"Listing with ID {listing_id} not found."
         }), 404
+
+    email = get_jwt_identity()
+    user = User.query.filter_by(email=email).first()
+
+    if not user.id == listing.user_id and not user.has_permission('manage_listings'):
+        return jsonify({
+            "status": "error",
+            "message": "You are not authorized to delete listings."
+        }), 400
 
     try:
         db.session.delete(listing)

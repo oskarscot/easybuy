@@ -19,6 +19,7 @@ class Listing(db.Model):
     price = db.Column(db.Numeric(10, 2), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())
+    status = db.Column(db.String(20), nullable=False, default='active')
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user = db.relationship('User', backref='listings')
@@ -26,11 +27,13 @@ class Listing(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
+            'user_id': self.user_id,
             'title': self.title,
             'description': self.description,
             'price': self.price,
             'created_at': self.created_at,
-            'updated_at': self.updated_at
+            'updated_at': self.updated_at,
+            'status': self.status
         }
 
 
@@ -53,6 +56,12 @@ class User(db.Model):
     def has_permission(self, permission_name):
         for role in self.roles:
             if role.has_permission(permission_name):
+                return True
+        return False
+
+    def has_role(self, role_name):
+        for role in self.roles:
+            if role.has_permission(role_name):
                 return True
         return False
 
@@ -95,4 +104,23 @@ class Permission(db.Model):
             'id': self.id,
             'name': self.name,
             'role_id': self.role_id
+        }
+
+class Purchase(db.Model):
+    __tablename__ = 'purchases'
+
+    id = db.Column(db.Integer, primary_key=True)
+    listing_id = db.Column(db.Integer, db.ForeignKey('listings.id'), nullable=False)
+    buyer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    purchased_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())
+
+    listing = db.relationship('Listing', backref='purchases')
+    buyer = db.relationship('User', backref='purchases')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'listing_id': self.listing_id,
+            'buyer_id': self.buyer_id,
+            'purchased_at': self.purchased_at
         }

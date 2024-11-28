@@ -29,7 +29,7 @@ def login():
         }), 401
 
     roles = [role.name for role in user.roles]
-    token = create_access_token(identity=email, additional_claims={'roles': roles})
+    token = create_access_token(identity=email, additional_claims={'roles': roles}, expires_delta=False)
     return jsonify({
         "status": "success",
         "message": "Logged in successfully.",
@@ -65,7 +65,8 @@ def register():
 
     new_user = User(
         username=username,
-        email=email
+        email=email,
+        balance=0.0
     )
     new_user.set_password(password)
     db.session.add(new_user)
